@@ -83,6 +83,16 @@ Fetches full conversation thread by root tweet ID.
 bun run x-search.ts tweet <tweet_id> [--json]
 ```
 
+### Lists
+
+```bash
+bun run x-search.ts lists show <username>            # Show owned lists
+bun run x-search.ts lists tweets <list_id> [--pages N] [--limit N] [--sort likes|recent] [--json]
+bun run x-search.ts lists members <list_id> [--json]
+```
+
+Pull tweets from curated X Lists — useful for daily digests from a curated group of accounts. Supports same `--sort`, `--limit`, `--pages`, and `--json` flags as search. Aliases: `lists`/`list`/`l`, `tweets`/`t`, `members`/`m`.
+
 ### Watchlist
 
 ```bash
@@ -179,7 +189,7 @@ skills/x-research/
 ├── SKILL.md           (this file)
 ├── x-search.ts        (CLI entry point)
 ├── lib/
-│   ├── api.ts         (X API wrapper: search, thread, profile, tweet)
+│   ├── api.ts         (X API wrapper: search, thread, profile, tweet, lists)
 │   ├── cache.ts       (file-based cache, 15min TTL)
 │   └── format.ts      (Telegram + markdown formatters)
 ├── data/

@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.4.0 (2026-02-09)
+
+### Added — X Lists Support
+Browse, pull tweets from, and inspect members of curated X Lists. Useful for daily digests, monitoring curated feeds, and research across a group of accounts.
+
+- **`lists show <username>`** — discover lists owned by a user
+- **`lists tweets <list_id>`** — pull recent tweets from a list with pagination, sorting, and dedup (same flags as search: `--pages`, `--limit`, `--sort`, `--json`)
+- **`lists members <list_id>`** — show list members with follower counts and bios
+- Aliases: `lists`/`list`/`l`, `tweets`/`t`, `members`/`m`
+- New API functions: `getOwnedLists`, `getListTweets`, `getListMembers`, `getUserId`
+- Typed interfaces: `XList`, `ListMember`
+- Formatters: `formatListsTelegram`, `formatListMembersTelegram`
+
 ## v2.3.0 (2026-02-09)
 
 ### Fixed — Remove LLM Hallucinations

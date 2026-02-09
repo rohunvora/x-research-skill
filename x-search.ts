@@ -11,6 +11,9 @@
  *   watchlist add <user>        Add user to watchlist
  *   watchlist remove <user>     Remove user from watchlist
  *   watchlist check             Check recent tweets from all watchlist accounts
+ *   lists show <username>        Show owned lists
+ *   lists tweets <list_id>      Recent tweets from a list
+ *   lists members <list_id>     Show list members
  *   cache clear                 Clear search cache
  *
  * Search options:
@@ -365,6 +368,73 @@ async function cmdWatchlist() {
   }
 }
 
+async function cmdLists() {
+  const sub = args[1];
+  const asJson = getFlag("json");
+
+  if (!sub || sub === "show") {
+    // Show all owned lists — need authenticated user's ID
+    const username = args[2] || getOpt("user");
+    if (!username) {
+      console.error("Usage: x-search.ts lists show <username>");
+      console.error("       x-search.ts lists tweets <list_id>");
+      console.error("       x-search.ts lists members <list_id>");
+      process.exit(1);
+    }
+    const userId = await api.getUserId(username);
+    const lists = await api.getOwnedLists(userId);
+    if (asJson) {
+      console.log(JSON.stringify(lists, null, 2));
+    } else {
+      console.log(fmt.formatListsTelegram(lists));
+    }
+    return;
+  }
+
+  if (sub === "tweets" || sub === "t") {
+    const listId = args[2];
+    if (!listId) {
+      console.error("Usage: x-search.ts lists tweets <list_id> [--limit N] [--pages N]");
+      process.exit(1);
+    }
+    const pages = Math.min(parseInt(getOpt("pages") || "1"), 5);
+    const limit = parseInt(getOpt("limit") || "15");
+    const sortOpt = getOpt("sort") || "recent";
+
+    let tweets = await api.getListTweets(listId, { pages });
+
+    if (sortOpt !== "recent") {
+      tweets = api.sortBy(tweets, sortOpt as "likes" | "impressions" | "retweets");
+    }
+
+    tweets = api.dedupe(tweets);
+
+    if (asJson) {
+      console.log(JSON.stringify(tweets.slice(0, limit), null, 2));
+    } else {
+      console.log(fmt.formatResultsTelegram(tweets, { limit }));
+    }
+    return;
+  }
+
+  if (sub === "members" || sub === "m") {
+    const listId = args[2];
+    if (!listId) {
+      console.error("Usage: x-search.ts lists members <list_id>");
+      process.exit(1);
+    }
+    const members = await api.getListMembers(listId);
+    if (asJson) {
+      console.log(JSON.stringify(members, null, 2));
+    } else {
+      console.log(fmt.formatListMembersTelegram(`List ${listId}`, members));
+    }
+    return;
+  }
+
+  console.error("Unknown lists subcommand. Use: show, tweets, members");
+}
+
 async function cmdCache() {
   const sub = args[1];
   if (sub === "clear") {
@@ -388,6 +458,9 @@ Commands:
   watchlist add <user> [note] Add user to watchlist
   watchlist remove <user>     Remove user from watchlist
   watchlist check             Check recent from all watchlist accounts
+  lists show <username>        Show owned lists
+  lists tweets <list_id>      Recent tweets from a list
+  lists members <list_id>     Show list members
   cache clear                 Clear search cache
 
 Search options:
@@ -429,6 +502,11 @@ async function main() {
     case "watchlist":
     case "wl":
       await cmdWatchlist();
+      break;
+    case "lists":
+    case "list":
+    case "l":
+      await cmdLists();
       break;
     case "cache":
       await cmdCache();

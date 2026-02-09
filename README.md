@@ -8,6 +8,7 @@ Wraps the X API into a fast CLI so your AI agent (or you) can search tweets, pul
 
 - **Search** with engagement sorting, time filtering, noise removal
 - **Quick mode** for cheap, targeted lookups
+- **Lists** — pull tweets from curated X Lists, browse members
 - **Watchlists** for monitoring accounts
 - **Cache** to avoid repeat API charges
 - **Cost transparency** — every search shows what it cost
@@ -50,6 +51,8 @@ git clone https://github.com/rohunvora/x-research-skill.git x-research
 - "Search X for OpenClaw skills"
 - "What's CT saying about BNKR today?"
 - "Check what @frankdegods posted recently"
+- "Pull today's tweets from my smart smart list"
+- "Who's on my X list?"
 
 ### CLI commands
 ```bash
@@ -66,6 +69,11 @@ bun run x-search.ts thread TWEET_ID
 
 # Single tweet
 bun run x-search.ts tweet TWEET_ID
+
+# Lists — browse and pull from curated X Lists
+bun run x-search.ts lists show <username>
+bun run x-search.ts lists tweets <list_id> --pages 3 --json
+bun run x-search.ts lists members <list_id>
 
 # Watchlist
 bun run x-search.ts watchlist add username "optional note"
@@ -143,6 +151,52 @@ Filters out low-engagement tweets (≥10 likes required). Applied post-fetch sin
 bun run x-search.ts search "crypto AI" --quality
 ```
 
+## Lists
+
+Pull tweets from curated X Lists — useful for monitoring a group of accounts without individual watchlist entries or search queries.
+
+### Commands
+
+```bash
+# Show all lists owned by a user
+bun run x-search.ts lists show <username>
+
+# Get recent tweets from a list (supports pagination)
+bun run x-search.ts lists tweets <list_id> [--pages N] [--limit N] [--sort likes|recent] [--json]
+
+# Show list members
+bun run x-search.ts lists members <list_id> [--json]
+```
+
+### Examples
+
+```bash
+# See what lists @tulipking has
+bun run x-search.ts lists show tulipking
+
+# Pull last 300 tweets from a list (3 pages × 100)
+bun run x-search.ts lists tweets 1991270610291298748 --pages 3 --json
+
+# Get top tweets from a list sorted by likes
+bun run x-search.ts lists tweets 1991270610291298748 --sort likes --limit 20
+
+# Check who's on a list
+bun run x-search.ts lists members 1991270610291298748
+```
+
+### Aliases
+
+- `lists` / `list` / `l` — all work
+- `tweets` / `t` — tweet subcommand
+- `members` / `m` — members subcommand
+
+### Notes
+
+- `lists show` requires a username (resolves to user ID internally)
+- Private lists are only visible with an authenticated user's own token
+- `lists tweets` supports the same `--sort`, `--limit`, `--pages`, and `--json` flags as search
+- Tweets from lists go through the same dedup and formatting pipeline as search results
+
 ## Cost
 
 As of February 2026, the X API uses **pay-per-use pricing** with prepaid credits. No subscriptions, no monthly caps. You buy credits in the [Developer Console](https://console.x.com) and they're deducted per request.
@@ -162,6 +216,9 @@ As of February 2026, the X API uses **pay-per-use pricing** with prepaid credits
 | Standard search (1 page) | ~$0.50 |
 | Deep research (3 pages) | ~$1.50 |
 | Profile check (user + posts) | ~$0.51 |
+| List tweets (1 page, ≤100 posts) | ~$0.50 |
+| List tweets (3 pages) | ~$1.50 |
+| List members | ~$1.00 |
 | Watchlist check (5 accounts) | ~$2.55 |
 | Cached repeat (any) | free |
 
@@ -186,7 +243,7 @@ x-research/
 ├── SKILL.md              # Agent instructions (Claude reads this)
 ├── x-search.ts           # CLI entry point
 ├── lib/
-│   ├── api.ts            # X API wrapper
+│   ├── api.ts            # X API wrapper (search, threads, profiles, lists)
 │   ├── cache.ts          # File-based cache
 │   └── format.ts         # Telegram + markdown formatters
 └── data/

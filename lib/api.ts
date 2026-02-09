@@ -310,6 +310,113 @@ export function filterEngagement(
 }
 
 /**
+ * List interface for X Lists.
+ */
+export interface XList {
+  id: string;
+  name: string;
+  description?: string;
+  member_count?: number;
+  follower_count?: number;
+  private?: boolean;
+  owner_id?: string;
+}
+
+/**
+ * Get lists owned by the authenticated user (or a given user ID).
+ * Requires the user ID — use getUserId() to resolve from username.
+ */
+export async function getOwnedLists(
+  userId: string,
+  opts: { maxResults?: number } = {}
+): Promise<XList[]> {
+  const maxResults = Math.min(opts.maxResults || 100, 100);
+  const url = `${BASE}/users/${userId}/owned_lists?max_results=${maxResults}&list.fields=description,member_count,follower_count,private,owner_id`;
+  const raw = await apiGet(url);
+  if (!raw.data || !Array.isArray(raw.data)) return [];
+  return raw.data.map((l: any) => ({
+    id: l.id,
+    name: l.name,
+    description: l.description,
+    member_count: l.member_count,
+    follower_count: l.follower_count,
+    private: l.private,
+    owner_id: l.owner_id,
+  }));
+}
+
+/**
+ * Get recent tweets from a list.
+ */
+export async function getListTweets(
+  listId: string,
+  opts: { maxResults?: number; pages?: number } = {}
+): Promise<Tweet[]> {
+  const maxResults = Math.max(Math.min(opts.maxResults || 100, 100), 1);
+  const pages = opts.pages || 1;
+  let allTweets: Tweet[] = [];
+  let nextToken: string | undefined;
+
+  for (let page = 0; page < pages; page++) {
+    const pagination = nextToken ? `&pagination_token=${nextToken}` : "";
+    const url = `${BASE}/lists/${listId}/tweets?max_results=${maxResults}&${FIELDS}${pagination}`;
+    const raw = await apiGet(url);
+    const tweets = parseTweets(raw);
+    allTweets.push(...tweets);
+    nextToken = raw.meta?.next_token;
+    if (!nextToken) break;
+    if (page < pages - 1) await sleep(RATE_DELAY_MS);
+  }
+
+  return allTweets;
+}
+
+/**
+ * List member with profile info.
+ */
+export interface ListMember {
+  id: string;
+  username: string;
+  name: string;
+  description?: string;
+  public_metrics?: {
+    followers_count: number;
+    following_count: number;
+    tweet_count: number;
+    listed_count: number;
+  };
+}
+
+/**
+ * Get members of a list.
+ */
+export async function getListMembers(
+  listId: string,
+  opts: { maxResults?: number } = {}
+): Promise<ListMember[]> {
+  const maxResults = Math.min(opts.maxResults || 100, 100);
+  const url = `${BASE}/lists/${listId}/members?max_results=${maxResults}&user.fields=username,name,public_metrics,description`;
+  const raw = await apiGet(url);
+  return (raw.data || []).map((m: any) => ({
+    id: m.id,
+    username: m.username,
+    name: m.name,
+    description: m.description,
+    public_metrics: m.public_metrics,
+  }));
+}
+
+/**
+ * Look up a user ID from a username.
+ */
+export async function getUserId(username: string): Promise<string> {
+  const url = `${BASE}/users/by/username/${username.replace(/^@/, "")}?user.fields=id`;
+  const raw = await apiGet(url);
+  if (!(raw as any).data?.id) throw new Error(`User @${username} not found`);
+  return (raw as any).data.id;
+}
+
+/**
  * Deduplicate tweets by ID.
  */
 export function dedupe(tweets: Tweet[]): Tweet[] {
