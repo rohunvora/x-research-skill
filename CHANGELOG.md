@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.3.0 (2026-02-09)
+
+### Added
+- **Usage tracking** — `usage` command fetches real API consumption from `GET /2/usage/tweets`. Falls back to local tracking when the endpoint isn't available.
+  - `usage` — daily breakdown with cost estimates and visual bars
+  - `usage --days 30` — configurable lookback period
+  - `usage --json` / `usage --markdown` — output formats for programmatic use
+- **Budget controls** — prevent runaway API costs, especially critical for agentic research loops
+  - `usage budget set-daily N` — block requests that would exceed daily limit
+  - `usage budget set-monthly N` — block requests that would exceed monthly limit
+  - `usage budget reset` — reset all counters
+  - Warnings at 80% of limit (configurable threshold)
+  - Requests blocked with clear message before API call is made
+- **Automatic usage recording** — every search, profile, and thread call records post reads locally
+  - Cached results are free and don't count toward limits
+  - Daily counters auto-reset at midnight
+  - Rolling counters track cumulative spend since last reset
+- **`lib/usage.ts`** — new module for all usage/budget logic
+
+### Changed
+- Search, profile, and thread commands now record usage after each API call
+- Search command checks budget limits before making API requests
+- Updated README with Usage Tracking & Budget Controls section
+- Updated SKILL.md with usage/budget CLI reference
+- Updated file structure docs to include `usage.ts` and `budget.json`
+
 ## v2.2.1 (2026-02-09)
 
 ### Fixed

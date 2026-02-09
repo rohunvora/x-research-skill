@@ -102,6 +102,25 @@ bun run x-search.ts cache clear    # Clear all cached results
 
 15-minute TTL. Avoids re-fetching identical queries.
 
+### Usage & Budget
+
+```bash
+bun run x-search.ts usage                         # API usage report (X API or local fallback)
+bun run x-search.ts usage --days 30               # Last 30 days
+bun run x-search.ts usage budget                  # Show budget config & status
+bun run x-search.ts usage budget set-daily 5      # $5/day spending limit
+bun run x-search.ts usage budget set-monthly 50   # $50/month spending limit
+bun run x-search.ts usage budget set-daily 0      # Remove daily limit
+bun run x-search.ts usage budget reset            # Reset all usage counters
+```
+
+Budget controls prevent runaway API costs during agentic research loops. When a limit is set, requests that would exceed the budget are **blocked** before calling the API. Cached results are free and don't count toward limits.
+
+**Recommended for agents:** Set a daily limit to prevent expensive multi-page search loops:
+```bash
+bun run x-search.ts usage budget set-daily 10    # $10/day is ~2000 post reads
+```
+
 ## Research Loop (Agentic)
 
 When doing deep research (not just a quick search), follow this loop:
@@ -181,9 +200,11 @@ skills/x-research/
 ├── lib/
 │   ├── api.ts         (X API wrapper: search, thread, profile, tweet)
 │   ├── cache.ts       (file-based cache, 15min TTL)
-│   └── format.ts      (Telegram + markdown formatters)
+│   ├── format.ts      (Telegram + markdown formatters)
+│   └── usage.ts       (usage tracking & budget controls)
 ├── data/
 │   ├── watchlist.json  (accounts to monitor)
+│   ├── budget.json     (budget config & local tracking)
 │   └── cache/          (auto-managed)
 └── references/
     └── x-api.md        (X API endpoint reference)

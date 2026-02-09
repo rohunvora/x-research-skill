@@ -34,6 +34,7 @@ import { join } from "path";
 import * as api from "./lib/api";
 import * as cache from "./lib/cache";
 import * as fmt from "./lib/format";
+import * as usage from "./lib/usage";
 
 const SKILL_DIR = import.meta.dir;
 const WATCHLIST_PATH = join(SKILL_DIR, "data", "watchlist.json");
@@ -132,6 +133,13 @@ async function cmdSearch() {
   // Cache TTL: 1hr for quick mode, 15min default
   const cacheTtlMs = quick ? 3_600_000 : 900_000;
 
+  // Budget check before making API calls
+  const budgetBlock = usage.checkBudget(pages * 100);
+  if (budgetBlock) {
+    console.error(budgetBlock);
+    process.exit(1);
+  }
+
   // Check cache (cache key does NOT include quick flag — shared between modes)
   const cacheParams = `sort=${sortOpt}&pages=${pages}&since=${since || "7d"}`;
   const cached = cache.get(query, cacheParams, cacheTtlMs);
@@ -201,6 +209,12 @@ async function cmdSearch() {
     console.error(`\nSaved to ${path}`);
   }
 
+  // Record usage and check budget warnings
+  if (!cached) {
+    const warning = usage.recordUsage(rawTweetCount);
+    if (warning) console.error(warning);
+  }
+
   // Cost display (based on raw API reads, not post-filter count)
   const cost = (rawTweetCount * 0.005).toFixed(2);
   if (quick) {
@@ -226,6 +240,9 @@ async function cmdThread() {
 
   const pages = Math.min(parseInt(getOpt("pages") || "2"), 5);
   const tweets = await api.thread(tweetId, { pages });
+
+  // Record usage: thread fetches root tweet + conversation search
+  usage.recordUsage(tweets.length + 1);
 
   if (tweets.length === 0) {
     console.log("No tweets found in thread.");
@@ -254,6 +271,9 @@ async function cmdProfile() {
     count,
     includeReplies,
   });
+
+  // Record usage: 1 user lookup + tweet reads
+  usage.recordUsage(tweets.length);
 
   if (asJson) {
     console.log(JSON.stringify({ user, tweets }, null, 2));
@@ -376,7 +396,116 @@ async function cmdCache() {
   }
 }
 
-function usage() {
+async function cmdUsage() {
+  const sub = args[1];
+
+  if (sub === "budget") {
+    const action = args[2];
+    const budget = usage.loadBudget();
+
+    if (action === "set-daily") {
+      const limit = parseFloat(args[3]);
+      if (isNaN(limit) || limit < 0) {
+        console.error("Usage: x-search.ts usage budget set-daily <amount_usd>");
+        console.error("  Set to 0 to remove daily limit.");
+        process.exit(1);
+      }
+      budget.dailyLimitUsd = limit;
+      usage.saveBudget(budget);
+      console.log(
+        limit === 0
+          ? "Daily budget limit removed."
+          : `Daily budget set to $${limit.toFixed(2)}`
+      );
+      return;
+    }
+
+    if (action === "set-monthly") {
+      const limit = parseFloat(args[3]);
+      if (isNaN(limit) || limit < 0) {
+        console.error("Usage: x-search.ts usage budget set-monthly <amount_usd>");
+        console.error("  Set to 0 to remove monthly limit.");
+        process.exit(1);
+      }
+      budget.monthlyLimitUsd = limit;
+      usage.saveBudget(budget);
+      console.log(
+        limit === 0
+          ? "Monthly budget limit removed."
+          : `Monthly budget set to $${limit.toFixed(2)}`
+      );
+      return;
+    }
+
+    if (action === "reset") {
+      budget.localTracking = {
+        today: new Date().toISOString().split("T")[0],
+        todayPostReads: 0,
+        todayCost: 0,
+        rollingPostReads: 0,
+        rollingCost: 0,
+        lastReset: new Date().toISOString(),
+      };
+      usage.saveBudget(budget);
+      console.log("Budget counters reset.");
+      return;
+    }
+
+    // Default: show budget status
+    console.log(`💰 Budget Configuration\n`);
+    console.log(
+      `  Daily limit:   ${budget.dailyLimitUsd > 0 ? `$${budget.dailyLimitUsd.toFixed(2)}` : "none"}`
+    );
+    console.log(
+      `  Monthly limit: ${budget.monthlyLimitUsd > 0 ? `$${budget.monthlyLimitUsd.toFixed(2)}` : "none"}`
+    );
+    console.log(`  Warn at:       ${Math.round(budget.warnThreshold * 100)}% of limit`);
+    console.log(`\n📊 Today's Usage\n`);
+    console.log(
+      `  Post reads: ${budget.localTracking.todayPostReads.toLocaleString()}`
+    );
+    console.log(
+      `  Est. cost:  $${budget.localTracking.todayCost.toFixed(2)}`
+    );
+    console.log(`\n📊 Rolling (since ${budget.localTracking.lastReset.split("T")[0]})\n`);
+    console.log(
+      `  Post reads: ${budget.localTracking.rollingPostReads.toLocaleString()}`
+    );
+    console.log(
+      `  Est. cost:  $${budget.localTracking.rollingCost.toFixed(2)}`
+    );
+    return;
+  }
+
+  // Default: fetch usage from API
+  const days = parseInt(getOpt("days") || "7");
+  const asJson = getFlag("json");
+  const asMarkdown = getFlag("markdown");
+
+  try {
+    const data = await usage.fetchUsage({ days });
+    if (asJson) {
+      console.log(JSON.stringify(data, null, 2));
+    } else if (asMarkdown) {
+      console.log(usage.formatUsageMarkdown(data));
+    } else {
+      console.log(usage.formatUsageTelegram(data));
+    }
+  } catch (e: any) {
+    console.error(`Error fetching usage: ${e.message}`);
+    // Fall back to local tracking
+    console.log(`\nLocal tracking (fallback):\n`);
+    const budget = usage.loadBudget();
+    console.log(
+      `  Today: ${budget.localTracking.todayPostReads} reads (~$${budget.localTracking.todayCost.toFixed(2)})`
+    );
+    console.log(
+      `  Rolling: ${budget.localTracking.rollingPostReads} reads (~$${budget.localTracking.rollingCost.toFixed(2)})`
+    );
+  }
+}
+
+function showUsage() {
   console.log(`x-search — X/Twitter research CLI
 
 Commands:
@@ -389,6 +518,11 @@ Commands:
   watchlist remove <user>     Remove user from watchlist
   watchlist check             Check recent from all watchlist accounts
   cache clear                 Clear search cache
+  usage                       Show API usage (from X API or local tracking)
+  usage budget                Show budget configuration and status
+  usage budget set-daily N    Set daily spending limit (USD, 0 to remove)
+  usage budget set-monthly N  Set monthly spending limit (USD, 0 to remove)
+  usage budget reset          Reset usage counters
 
 Search options:
   --sort likes|impressions|retweets|recent   (default: likes)
@@ -433,8 +567,12 @@ async function main() {
     case "cache":
       await cmdCache();
       break;
+    case "usage":
+    case "u":
+      await cmdUsage();
+      break;
     default:
-      usage();
+      showUsage();
   }
 }
 

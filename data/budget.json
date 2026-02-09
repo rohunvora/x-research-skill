@@ -1,0 +1,13 @@
+{
+  "dailyLimitUsd": 0,
+  "monthlyLimitUsd": 0,
+  "warnThreshold": 0.8,
+  "localTracking": {
+    "today": "2026-02-09",
+    "todayPostReads": 0,
+    "todayCost": 0,
+    "rollingPostReads": 0,
+    "rollingCost": 0,
+    "lastReset": "2026-02-09T05:45:13.914Z"
+  }
+}

@@ -73,6 +73,14 @@ bun run x-search.ts watchlist check
 
 # Save research to file
 bun run x-search.ts search "query" --save --markdown
+
+# Usage & budget
+bun run x-search.ts usage                         # API usage report
+bun run x-search.ts usage --days 30               # Last 30 days
+bun run x-search.ts usage budget                  # Budget status
+bun run x-search.ts usage budget set-daily 5      # $5/day limit
+bun run x-search.ts usage budget set-monthly 50   # $50/month limit
+bun run x-search.ts usage budget reset            # Reset counters
 ```
 
 ### Search options
@@ -143,6 +151,37 @@ Filters out low-engagement tweets (≥10 likes required). Applied post-fetch sin
 bun run x-search.ts search "crypto AI" --quality
 ```
 
+## Usage Tracking & Budget Controls
+
+With pay-per-use pricing, cost visibility is critical. x-research tracks every API call locally and can fetch real usage data from the X API.
+
+### Check usage
+```bash
+bun run x-search.ts usage                # Fetch from X API (or local fallback)
+bun run x-search.ts usage --days 30      # Last 30 days
+bun run x-search.ts usage --json         # Raw JSON for programmatic use
+bun run x-search.ts usage --markdown     # Markdown report
+```
+
+### Set budget limits
+```bash
+bun run x-search.ts usage budget set-daily 5     # Block requests after $5/day
+bun run x-search.ts usage budget set-monthly 50  # Block requests after $50/month
+bun run x-search.ts usage budget set-daily 0     # Remove daily limit
+bun run x-search.ts usage budget reset           # Reset all counters
+```
+
+**How it works:**
+- Every search, profile, and thread call records post reads locally in `data/budget.json`
+- Before each API call, x-research checks if the request would exceed your budget
+- If it would, the request is **blocked** with a clear message
+- Warnings appear when you hit 80% of your limit (configurable)
+- `usage` command fetches real data from `GET /2/usage/tweets` when available, falls back to local tracking
+- Daily counters auto-reset at midnight; rolling counters track 30-day spend
+- Cached results don't count toward budget (they're free)
+
+**Why this matters:** AI agents can burn through credits fast with multi-page searches. Budget controls prevent runaway costs, especially in agentic loops where the LLM decides how many searches to run.
+
 ## Cost
 
 As of February 2026, the X API uses **pay-per-use pricing** with prepaid credits. No subscriptions, no monthly caps. You buy credits in the [Developer Console](https://console.x.com) and they're deducted per request.
@@ -188,9 +227,11 @@ x-research/
 ├── lib/
 │   ├── api.ts            # X API wrapper
 │   ├── cache.ts          # File-based cache
-│   └── format.ts         # Telegram + markdown formatters
+│   ├── format.ts         # Telegram + markdown formatters
+│   └── usage.ts          # Usage tracking & budget controls
 └── data/
     ├── watchlist.json    # Accounts to monitor
+    ├── budget.json       # Budget config & local tracking (auto-managed)
     └── cache/            # Auto-managed
 ```
 
