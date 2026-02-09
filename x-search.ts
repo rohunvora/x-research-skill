@@ -160,7 +160,7 @@ async function cmdSearch() {
     });
   }
 
-  // --quality: post-hoc filter for min 10 likes (min_faves operator unavailable on Basic tier)
+  // --quality: post-hoc filter for min 10 likes (min_faves not available as a search operator)
   if (quality) {
     tweets = api.filterEngagement(tweets, { minLikes: 10 });
   }

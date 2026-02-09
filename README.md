@@ -137,7 +137,7 @@ If your query already contains `from:`, the flag won't double-add it.
 
 ## `--quality` Flag
 
-Filters out low-engagement tweets (≥10 likes required). Applied post-fetch since `min_faves` isn't available on X API Basic tier.
+Filters out low-engagement tweets (≥10 likes required). Applied post-fetch since `min_faves` isn't available as an X API search operator.
 
 ```bash
 bun run x-search.ts search "crypto AI" --quality
@@ -207,11 +207,11 @@ x-research/
 
 ## Limitations
 
-- Search covers last 7 days only (recent search endpoint restriction)
+- Search covers last 7 days only (uses `/2/tweets/search/recent` — the full-archive `/2/tweets/search/all` endpoint is available on the same pay-per-use plan but not yet implemented in this skill)
 - Read-only — never posts or interacts
 - Requires X API access with prepaid credits ([sign up](https://console.x.com))
 - `min_likes` / `min_retweets` search operators unavailable (filtered post-hoc instead)
-- Full-archive search (beyond 7 days) requires enterprise access
+- Full-archive search (beyond 7 days) is available on pay-per-use (same credits). See [X API search docs](https://docs.x.com/x-api/posts/search/introduction). This skill currently only uses recent search — full-archive support coming soon.
 
 ## Star History
 

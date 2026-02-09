@@ -8,13 +8,21 @@ Bearer token from env var `X_BEARER_TOKEN`.
 -H "Authorization: Bearer $X_BEARER_TOKEN"
 ```
 
-## Search Endpoint
+## Search Endpoints
 
+### Recent Search (last 7 days)
 ```
 GET https://api.x.com/2/tweets/search/recent
 ```
+Covers last 7 days. Max 100 results per request. Available to all developers.
 
-Covers last 7 days. Max 100 results per request.
+### Full-Archive Search (all time, back to March 2006)
+```
+GET https://api.x.com/2/tweets/search/all
+```
+Searches the complete Post archive. Max 500 results per request. Available on **pay-per-use** (same credits as recent search) and Enterprise. Same query operators, same response format. 1,024-char query length (vs 512 for recent).
+
+**Note:** This skill currently only uses recent search. Full-archive is available on the same pay-per-use plan — no enterprise access required.
 
 ### Standard Query Params
 
@@ -51,9 +59,9 @@ Paginate with `next_token` from response `meta.next_token`.
 | `conversation_id:` | `conversation_id:123` | Thread by root tweet ID |
 | `place_country:` | `place_country:US` | Country filter |
 
-**Unavailable on current tier:** `min_likes`, `min_retweets`, `min_replies`. Filter engagement post-hoc from `public_metrics`.
+**Not available as search operators:** `min_likes`, `min_retweets`, `min_replies`. Filter engagement post-hoc from `public_metrics`.
 
-**Limits:** Max query length 512 chars. Max ~10 operators per query.
+**Limits:** Max query length 512 chars for recent search, 1,024 for full-archive (4,096 for Enterprise).
 
 ### Response Structure
 
@@ -100,8 +108,9 @@ External URLs from tweets are in `entities.urls[].expanded_url`. Use WebFetch to
 
 ### Rate Limits
 
-- 450 requests per 15-minute window (app-level)
-- 300 requests per 15-minute window (user-level)
+With pay-per-use pricing (Feb 2026+), rate limits are primarily controlled by spending limits you set in the Developer Console, not fixed per-window caps. The old 450/300 requests-per-15-min limits from the subscription model may no longer apply. If you hit a 429 error, the `x-rate-limit-reset` header tells you when to retry.
+
+The skill uses a 350ms delay between requests as a safety buffer.
 
 ### Cost (Pay-Per-Use — Updated Feb 2026)
 

@@ -21,7 +21,7 @@
 - Added Developer Console reference (console.x.com) for credit management, auto-recharge, spending limits
 - Added full list of tracked/billable endpoints
 - Fixed Limitations section — removed outdated "$200/mo" requirement
-- Added full-archive search (enterprise-only) note
+- Added full-archive search note (available on pay-per-use, not enterprise-only)
 
 ## v2.2.0 (2026-02-08)
 
@@ -60,7 +60,7 @@
 - **Watchlist system** — `data/watchlist.json` for monitoring accounts. Useful for heartbeat integration.
 - **Auto noise filtering** — `-is:retweet` added by default unless already in query
 - **Engagement sorting** — `--sort likes|impressions|retweets|recent`
-- **Post-hoc filtering** — `--min-likes N` and `--min-impressions N` (since X API Basic tier lacks these operators)
+- **Post-hoc filtering** — `--min-likes N` and `--min-impressions N` (since X API doesn't support these as search operators)
 - **Save to file** — `--save` flag auto-saves research to `~/clawd/drafts/`
 - **Multiple output formats** — `--json` for raw data, `--markdown` for research docs, default for Telegram
 

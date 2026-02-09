@@ -161,6 +161,8 @@ async function apiGet(url: string): Promise<RawResponse> {
 
 /**
  * Search recent tweets (last 7 days).
+ * Note: Full-archive search (/2/tweets/search/all) is available on the same
+ * pay-per-use plan (no enterprise required) but not yet implemented here.
  */
 export async function search(
   query: string,
