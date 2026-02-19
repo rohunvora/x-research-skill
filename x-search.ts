@@ -4,9 +4,9 @@
  *
  * Commands:
  *   search <query> [options]    Search recent tweets
- *   thread <tweet_id>           Fetch full conversation thread
+ *   thread <tweet_id>           Load full conversation thread
  *   profile <username>          Recent tweets from a user
- *   tweet <tweet_id>            Fetch a single tweet
+ *   tweet <tweet_id>            Load a single tweet
  *   watchlist                   Show watchlist
  *   watchlist add <user>        Add user to watchlist
  *   watchlist remove <user>     Remove user from watchlist
@@ -17,7 +17,7 @@
  *   --sort likes|impressions|retweets|recent   Sort order (default: likes)
  *   --min-likes N              Filter by minimum likes
  *   --min-impressions N        Filter by minimum impressions
- *   --pages N                  Number of pages to fetch (default: 1, max 5)
+ *   --pages N                  Number of pages to load (default: 1, max 5)
  *   --no-replies               Exclude replies
  *   --no-retweets              Exclude retweets (added by default)
  *   --limit N                  Max results to display (default: 15)
@@ -31,13 +31,14 @@
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { homedir } from "os";
 import * as api from "./lib/api";
 import * as cache from "./lib/cache";
 import * as fmt from "./lib/format";
 
 const SKILL_DIR = import.meta.dir;
 const WATCHLIST_PATH = join(SKILL_DIR, "data", "watchlist.json");
-const DRAFTS_DIR = join(process.env.HOME!, "clawd", "drafts");
+const DRAFTS_DIR = join(homedir(), "clawd", "drafts");
 
 // --- Arg parsing ---
 
@@ -149,7 +150,7 @@ async function cmdSearch() {
     cache.set(query, cacheParams, tweets);
   }
 
-  // Track raw count for cost (API charges per tweet read, regardless of post-hoc filters)
+  // Track raw count for cost (API charges per tweet read, regardless of after-filter pass)
   const rawTweetCount = tweets.length;
 
   // Filter
@@ -160,7 +161,7 @@ async function cmdSearch() {
     });
   }
 
-  // --quality: post-hoc filter for min 10 likes (min_faves not available as a search operator)
+  // --quality: after-filter pass for min 10 likes (min_faves not available as a search operator)
   if (quality) {
     tweets = api.filterEngagement(tweets, { minLikes: 10 });
   }
@@ -201,7 +202,7 @@ async function cmdSearch() {
     console.error(`\nSaved to ${path}`);
   }
 
-  // Cost display (based on raw API reads, not post-filter count)
+  // Cost display (based on raw API reads, not filtered count)
   const cost = (rawTweetCount * 0.005).toFixed(2);
   if (quick) {
     console.error(`\n⚡ quick mode · ${rawTweetCount} tweets read (~$${cost})`);
@@ -381,9 +382,9 @@ function usage() {
 
 Commands:
   search <query> [options]    Search recent tweets (last 7 days)
-  thread <tweet_id>           Fetch full conversation thread
+  thread <tweet_id>           Load full conversation thread
   profile <username>          Recent tweets from a user
-  tweet <tweet_id>            Fetch a single tweet
+  tweet <tweet_id>            Load a single tweet
   watchlist                   Show watchlist
   watchlist add <user> [note] Add user to watchlist
   watchlist remove <user>     Remove user from watchlist
@@ -395,7 +396,7 @@ Search options:
   --since 1h|3h|12h|1d|7d   Time filter (default: last 7 days)
   --min-likes N              Filter minimum likes
   --min-impressions N        Filter minimum impressions
-  --pages N                  Pages to fetch, 1-5 (default: 1)
+  --pages N                  Pages to load, 1-5 (default: 1)
   --limit N                  Results to display (default: 15)
   --quick                    Quick mode: 1 page, max 10 results, auto noise
                              filter, 1hr cache TTL, cost summary
