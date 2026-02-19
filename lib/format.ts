@@ -23,13 +23,13 @@ function timeAgo(dateStr: string): string {
 /**
  * Format a single tweet for Telegram (monospace-friendly).
  */
-export function formatTweetTelegram(t: Tweet, index?: number): string {
+export function formatTweetTelegram(t: Tweet, index?: number, opts?: { full?: boolean }): string {
   const prefix = index !== undefined ? `${index + 1}. ` : "";
   const engagement = `${compactNumber(t.metrics.likes)}❤️ ${compactNumber(t.metrics.impressions)}👁`;
   const time = timeAgo(t.created_at);
 
-  // Truncate text to 200 chars for summary view
-  const text = t.text.length > 200 ? t.text.slice(0, 197) + "..." : t.text;
+  // Truncate text to 200 chars for summary view, full text for single tweet/thread
+  const text = opts?.full || t.text.length <= 200 ? t.text : t.text.slice(0, 197) + "...";
   // Clean up t.co links from text
   const cleanText = text.replace(/https:\/\/t\.co\/\S+/g, "").trim();
 

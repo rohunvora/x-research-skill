@@ -9,7 +9,7 @@ description: >
   "/x-research", (2) user is working on something where recent X discourse would provide
   useful context (new library releases, API changes, product launches, cultural events,
   industry drama), (3) user wants to find what devs/experts/community thinks about a topic.
-  NOT for: posting tweets, account management, or historical archive searches beyond 7 days.
+  NOT for: posting tweets or account management. Note: currently uses recent search (last 7 days). Full-archive search is available on the same pay-per-use X API plan but not yet implemented in this skill.
 ---
 
 # X Research

@@ -168,7 +168,7 @@ async function cmdSearch() {
     });
   }
 
-  // --quality: post-hoc filter for min 10 likes (min_faves operator unavailable on Basic tier)
+  // --quality: post-hoc filter for min 10 likes (min_faves not available as a search operator)
   if (quality) {
     tweets = api.filterEngagement(tweets, { minLikes: 10 });
   }
@@ -251,7 +251,7 @@ async function cmdThread() {
 
   console.log(`🧵 Thread (${tweets.length} tweets)\n`);
   for (const t of tweets) {
-    console.log(fmt.formatTweetTelegram(t));
+    console.log(fmt.formatTweetTelegram(t, undefined, { full: true }));
     console.log();
   }
 }
@@ -299,7 +299,7 @@ async function cmdTweet() {
   if (asJson) {
     console.log(JSON.stringify(tweet, null, 2));
   } else {
-    console.log(fmt.formatTweetTelegram(tweet));
+    console.log(fmt.formatTweetTelegram(tweet, undefined, { full: true }));
   }
 }
 
