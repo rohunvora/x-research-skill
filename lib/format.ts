@@ -138,6 +138,34 @@ export function formatResearchMarkdown(
 }
 
 /**
+ * Format a list of X Lists for display.
+ */
+export function formatListsTelegram(lists: any[]): string {
+  if (lists.length === 0) return "No lists found.";
+  let out = `📋 Your Lists (${lists.length})\n\n`;
+  for (const l of lists) {
+    const priv = l.private ? " 🔒" : "";
+    const desc = l.description ? ` — ${l.description.slice(0, 80)}` : "";
+    out += `  ${l.name}${priv} (${l.member_count || 0} members, id:${l.id})${desc}\n`;
+  }
+  return out;
+}
+
+/**
+ * Format list members for display.
+ */
+export function formatListMembersTelegram(listName: string, members: import("./api").ListMember[]): string {
+  if (members.length === 0) return `No members in ${listName}.`;
+  let out = `👥 ${listName} — ${members.length} members\n\n`;
+  for (const m of members) {
+    const followers = m.public_metrics?.followers_count || 0;
+    const desc = m.description ? ` — ${m.description.slice(0, 60)}` : "";
+    out += `  @${m.username} (${compactNumber(followers)} followers)${desc}\n`;
+  }
+  return out;
+}
+
+/**
  * Format a user profile for Telegram.
  */
 export function formatProfileTelegram(user: any, tweets: Tweet[]): string {
