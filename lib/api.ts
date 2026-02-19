@@ -1,30 +1,33 @@
 /**
  * X API wrapper — search, threads, profiles, single tweets.
- * Uses Bearer token from env: X_BEARER_TOKEN
+ * Uses Bearer token from runtime env: X_BEARER_TOKEN
  */
-
-import { readFileSync } from "fs";
 
 const BASE = "https://api.x.com/2";
 const RATE_DELAY_MS = 350; // stay under 450 req/15min
 
+function readRuntimeEnv(name: string): string | null {
+  const bunEnv = (globalThis as any).Bun?.env;
+  const bunValue = bunEnv?.[name];
+  if (typeof bunValue === "string" && bunValue.trim().length > 0) {
+    return bunValue;
+  }
+
+  const proc = (globalThis as any).process;
+  const nodeValue = proc?.env?.[name];
+  if (typeof nodeValue === "string" && nodeValue.trim().length > 0) {
+    return nodeValue;
+  }
+
+  return null;
+}
+
 function getToken(): string {
-  // Try env first
-  if (process.env.X_BEARER_TOKEN) return process.env.X_BEARER_TOKEN;
-
-  // Try global.env
-  try {
-    const envFile = readFileSync(
-      `${process.env.HOME}/.config/env/global.env`,
-      "utf-8"
-    );
-    const match = envFile.match(/X_BEARER_TOKEN=["']?([^"'\n]+)/);
-    if (match) return match[1];
-  } catch {}
-
-  throw new Error(
-    "X_BEARER_TOKEN not found in env or ~/.config/env/global.env"
-  );
+  const token = readRuntimeEnv("X_BEARER_TOKEN");
+  if (token) {
+    return token;
+  }
+  throw new Error("X_BEARER_TOKEN not found in runtime environment");
 }
 
 async function sleep(ms: number) {
