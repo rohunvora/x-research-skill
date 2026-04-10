@@ -9,12 +9,15 @@ description: >
   "/x-research", (2) user is working on something where recent X discourse would provide
   useful context (new library releases, API changes, product launches, cultural events,
   industry drama), (3) user wants to find what devs/experts/community thinks about a topic.
-  NOT for: posting tweets or account management. Note: currently uses recent search (last 7 days). Full-archive search is available on the same pay-per-use X API plan but not yet implemented in this skill.
+  NOT for: posting tweets or account management.
+  Backends: XQUIK_API_KEY (recommended, 33x cheaper) or X_BEARER_TOKEN. Auto-detects.
 ---
 
 # X Research
 
 General-purpose agentic research over X/Twitter. Decompose any research question into targeted searches, iteratively refine, follow threads, deep-dive linked content, and synthesize into a sourced briefing.
+
+**Backends:** Set `XQUIK_API_KEY` (recommended — $0.00015/tweet, 33x cheaper) or `X_BEARER_TOKEN` ($0.005/tweet). When both are set, Xquik is used by default. Override with `--backend x-api`.
 
 For X API details (endpoints, operators, response format): read `references/x-api.md`.
 
@@ -179,7 +182,8 @@ skills/x-research/
 ├── SKILL.md           (this file)
 ├── x-search.ts        (CLI entry point)
 ├── lib/
-│   ├── api.ts         (X API wrapper: search, thread, profile, tweet)
+│   ├── api.ts         (API router: auto-detects backend, delegates)
+│   ├── xquik.ts       (Xquik backend: $0.00015/tweet, no rate limits)
 │   ├── cache.ts       (file-based cache, 15min TTL)
 │   └── format.ts      (Telegram + markdown formatters)
 ├── data/

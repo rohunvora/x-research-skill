@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.0.0 (2026-04-10)
+
+### Added — Xquik Backend (33x cheaper searches)
+
+- **Xquik API backend** — set `XQUIK_API_KEY` for $0.00015/tweet reads (vs $0.005 on X API v2). A 100-tweet search costs ~$0.015 instead of ~$0.50.
+- **Auto-detection** — when both `XQUIK_API_KEY` and `X_BEARER_TOKEN` are set, prefers Xquik. Override with `--backend x-api` or `X_RESEARCH_BACKEND=x-api`.
+- **`--backend` flag** — explicitly choose `xquik` or `x-api` per command
+- **Dynamic cost display** — shows correct cost per backend after every search
+- **`lib/xquik.ts`** — Xquik backend module. Maps responses to existing `Tweet` interface — zero changes to cache or formatters.
+
+### Changed
+- `lib/api.ts` now routes through the active backend instead of always hitting X API v2
+- Error message when no token is found now suggests Xquik as an alternative
+- README updated with dual-backend setup, cost comparison table, and security notes
+- SKILL.md updated with backend info for Claude
+
 ## v2.3.0 (2026-02-09)
 
 ### Fixed — Remove LLM Hallucinations
