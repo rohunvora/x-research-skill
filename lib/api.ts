@@ -1,9 +1,53 @@
 /**
  * X API wrapper — search, threads, profiles, single tweets.
- * Uses Bearer token from env: X_BEARER_TOKEN
+ *
+ * Backends (auto-detected):
+ *   XQUIK_API_KEY  → Xquik API (33x cheaper, $0.00015/tweet, no rate limit hassle)
+ *   X_BEARER_TOKEN → X API v2  ($0.005/tweet, official)
+ *
+ * Override with --backend xquik|x-api or X_RESEARCH_BACKEND env var.
  */
 
 import { readFileSync } from "fs";
+import {
+  hasXquikKey,
+  xquikSearch,
+  xquikGetTweet,
+  xquikProfile,
+  xquikThread,
+  COST_PER_TWEET as XQUIK_COST_PER_TWEET,
+  COST_PER_USER as XQUIK_COST_PER_USER,
+} from "./xquik";
+
+export type Backend = "xquik" | "x-api";
+
+let _backendOverride: Backend | undefined;
+
+export function setBackend(backend: Backend | undefined) {
+  _backendOverride = backend;
+}
+
+/**
+ * Detect which backend to use.
+ * Priority: explicit override > env var > auto-detect (prefer xquik if available).
+ */
+export function getBackend(): Backend {
+  if (_backendOverride) return _backendOverride;
+  const envBackend = process.env.X_RESEARCH_BACKEND?.toLowerCase();
+  if (envBackend === "xquik" || envBackend === "x-api") return envBackend;
+  if (hasXquikKey()) return "xquik";
+  return "x-api";
+}
+
+/** Cost per tweet read for the active backend. */
+export function costPerTweet(): number {
+  return getBackend() === "xquik" ? XQUIK_COST_PER_TWEET : 0.005;
+}
+
+/** Human-readable backend label. */
+export function backendLabel(): string {
+  return getBackend() === "xquik" ? "Xquik" : "X API v2";
+}
 
 const BASE = "https://api.x.com/2";
 const RATE_DELAY_MS = 350; // stay under 450 req/15min
@@ -23,7 +67,8 @@ function getToken(): string {
   } catch {}
 
   throw new Error(
-    "X_BEARER_TOKEN not found in env or ~/.config/env/global.env"
+    "X_BEARER_TOKEN not found in env or ~/.config/env/global.env\n" +
+    "Tip: set XQUIK_API_KEY instead for 33x cheaper searches — https://xquik.com"
   );
 }
 
@@ -160,9 +205,11 @@ async function apiGet(url: string): Promise<RawResponse> {
 }
 
 /**
- * Search recent tweets (last 7 days).
- * Note: Full-archive search (/2/tweets/search/all) is available on the same
- * pay-per-use plan (no enterprise required) but not yet implemented here.
+ * Search recent tweets.
+ * Routes to Xquik or X API v2 based on active backend.
+ *
+ * Xquik: no 7-day limit, $0.00015/tweet, up to 200 results/page.
+ * X API v2: last 7 days only, $0.005/tweet, 100 results/page.
  */
 export async function search(
   query: string,
@@ -173,6 +220,11 @@ export async function search(
     since?: string; // ISO 8601 timestamp or shorthand like "1h", "3h", "1d"
   } = {}
 ): Promise<Tweet[]> {
+  if (getBackend() === "xquik") {
+    const since = opts.since ? parseSince(opts.since) || undefined : undefined;
+    return xquikSearch(query, { ...opts, since });
+  }
+
   const maxResults = Math.max(Math.min(opts.maxResults || 100, 100), 10);
   const pages = opts.pages || 1;
   const sort = opts.sortOrder || "relevancy";
@@ -215,6 +267,10 @@ export async function thread(
   conversationId: string,
   opts: { pages?: number } = {}
 ): Promise<Tweet[]> {
+  if (getBackend() === "xquik") {
+    return xquikThread(conversationId, opts);
+  }
+
   const query = `conversation_id:${conversationId}`;
   const tweets = await search(query, {
     pages: opts.pages || 2,
@@ -247,6 +303,10 @@ export async function profile(
   username: string,
   opts: { count?: number; includeReplies?: boolean } = {}
 ): Promise<{ user: any; tweets: Tweet[] }> {
+  if (getBackend() === "xquik") {
+    return xquikProfile(username, opts);
+  }
+
   // First, look up user ID
   const userUrl = `${BASE}/users/by/username/${username}?user.fields=public_metrics,description,created_at`;
   const userData = await apiGet(userUrl);
@@ -273,6 +333,10 @@ export async function profile(
  * Fetch a single tweet by ID.
  */
 export async function getTweet(tweetId: string): Promise<Tweet | null> {
+  if (getBackend() === "xquik") {
+    return xquikGetTweet(tweetId);
+  }
+
   const url = `${BASE}/tweets/${tweetId}?${FIELDS}`;
   const raw = await apiGet(url);
 

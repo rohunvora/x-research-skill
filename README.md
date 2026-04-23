@@ -32,6 +32,21 @@ git clone https://github.com/rohunvora/x-research-skill.git x-research
 
 ## Setup
 
+You need **one** of these backends (or both — Xquik is preferred when both are set):
+
+### Option A: Xquik API key (recommended — 33x cheaper)
+
+1. **Get an API key** at [xquik.com](https://xquik.com) (Dashboard → API Keys)
+2. **Set the env var:**
+   ```bash
+   export XQUIK_API_KEY="xk_your_key_here"
+   ```
+3. **Install Bun** (for CLI tooling): https://bun.sh
+
+That's it — no Bearer token, no developer portal application, no OAuth setup.
+
+### Option B: X API Bearer Token
+
 1. **X API Bearer Token** — Get one from the [X Developer Portal](https://developer.x.com)
 2. **Set the env var:**
    ```bash
@@ -42,6 +57,20 @@ git clone https://github.com/rohunvora/x-research-skill.git x-research
    X_BEARER_TOKEN=your-token-here
    ```
 3. **Install Bun** (for CLI tooling): https://bun.sh
+
+### Switching backends
+
+```bash
+# Auto-detect (prefers Xquik when both keys are set)
+bun run x-search.ts search "AI agents"
+
+# Force a specific backend
+bun run x-search.ts search "AI agents" --backend xquik
+bun run x-search.ts search "AI agents" --backend x-api
+
+# Or set via env
+export X_RESEARCH_BACKEND=xquik
+```
 
 ## Usage
 
@@ -145,39 +174,41 @@ bun run x-search.ts search "crypto AI" --quality
 
 ## Cost
 
-As of February 2026, the X API uses **pay-per-use pricing** with prepaid credits. No subscriptions, no monthly caps. You buy credits in the [Developer Console](https://console.x.com) and they're deducted per request.
+x-search supports two backends with very different pricing:
 
-**Per-resource costs:**
-| Resource | Cost |
-|----------|------|
-| Post read | $0.005 |
-| User lookup | $0.010 |
-| Post create | $0.010 |
+### Backend comparison
 
-**Search cost:** Each search page returns up to 100 posts = ~$0.50/page.
+| | Xquik | X API v2 |
+|---|---|---|
+| **Cost per tweet read** | **$0.00015** | $0.005 |
+| **Cost per user lookup** | **$0.00015** | $0.010 |
+| **100-tweet search** | **~$0.015** | ~$0.50 |
+| **Deep research (3 pages)** | **~$0.045** | ~$1.50 |
+| **Profile check** | **~$0.004** | ~$0.51 |
+| **Watchlist check (5 accounts)** | **~$0.02** | ~$2.55 |
+| **Cached repeat** | free | free |
+| **Auth** | API key | Bearer token |
+| **Rate limits** | None | 450 req/15min |
 
-| Operation | Est. cost |
-|-----------|-----------|
-| Quick search (1 page, ≤100 posts) | ~$0.50 |
-| Standard search (1 page) | ~$0.50 |
-| Deep research (3 pages) | ~$1.50 |
-| Profile check (user + posts) | ~$0.51 |
-| Watchlist check (5 accounts) | ~$2.55 |
-| Cached repeat (any) | free |
+That's **33x cheaper** per tweet read with Xquik. A heavy research session that costs $5 on X API v2 costs ~$0.15 on Xquik.
 
-**24-hour deduplication:** If you request the same post twice in a UTC day, you're only charged once. This means repeat searches on the same topic within a day cost less than the estimate above.
+### X API v2 pricing details
+
+The X API uses **pay-per-use pricing** with prepaid credits. No subscriptions, no monthly caps. You buy credits in the [Developer Console](https://console.x.com) and they're deducted per request.
+
+**24-hour deduplication:** If you request the same post twice in a UTC day, you're only charged once.
 
 **Spending controls:** Set auto-recharge thresholds and spending limits per billing cycle in the Developer Console. Failed requests are never billed.
 
 **xAI credit bonus:** Spend $200+/cycle on X API → earn 10-20% back as xAI/Grok API credits. See [pricing docs](https://docs.x.com/x-api/getting-started/pricing).
 
-**How x-search saves money:**
+### How x-search saves money (both backends)
+
 - Cache (15min default, 1hr in quick mode) — repeat queries are free
-- 24-hour dedup means re-running the same search costs $0 at API level too
 - Quick mode prevents accidental multi-page fetches
 - Cost displayed after every search so you know what you're spending
 - `--from` targets specific users instead of broad searches
-- Monitor your usage programmatically: `GET /2/usage/tweets`
+- Using Xquik backend reduces costs by 33x out of the box
 
 ## File structure
 
@@ -186,7 +217,8 @@ x-research/
 ├── SKILL.md              # Agent instructions (Claude reads this)
 ├── x-search.ts           # CLI entry point
 ├── lib/
-│   ├── api.ts            # X API wrapper
+│   ├── api.ts            # API router (auto-detects backend)
+│   ├── xquik.ts          # Xquik backend ($0.00015/tweet)
 │   ├── cache.ts          # File-based cache
 │   └── format.ts         # Telegram + markdown formatters
 └── data/
@@ -196,22 +228,25 @@ x-research/
 
 ## Security
 
-**Bearer token handling:** x-search reads your token from the `X_BEARER_TOKEN` env var or `~/.config/env/global.env`. The token is never printed to stdout, but be aware:
+**Xquik API key:** Sent as an `X-API-Key` header. Scoped to read-only operations by default. Lower risk than Bearer tokens since it doesn't grant write access to your X account.
+
+**X API Bearer token:** x-search reads your token from the `X_BEARER_TOKEN` env var or `~/.config/env/global.env`. The token is never printed to stdout, but be aware:
 
 - **AI coding agents** (Claude Code, Codex, etc.) may log tool calls — including HTTP headers — in session transcripts. If you're running x-search inside an agent session, your bearer token could appear in those logs.
 - **Recommendations:**
-  - Set `X_BEARER_TOKEN` as a system env var (not inline in commands)
+  - Set tokens as system env vars (not inline in commands)
   - Review your agent's session log settings
   - Use a token with minimal permissions (read-only)
   - Rotate your token if you suspect exposure
+  - Consider using the Xquik backend to avoid exposing your X Bearer token entirely
 
 ## Limitations
 
-- Search covers last 7 days only (uses `/2/tweets/search/recent` — the full-archive `/2/tweets/search/all` endpoint is available on the same pay-per-use plan but not yet implemented in this skill)
+- **X API v2 backend:** Search covers last 7 days only (uses `/2/tweets/search/recent`). Full-archive search is available on the same pay-per-use plan but not yet implemented.
+- **Xquik backend:** No 7-day limit on search.
 - Read-only — never posts or interacts
-- Requires X API access with prepaid credits ([sign up](https://console.x.com))
+- Requires either a Xquik API key ([xquik.com](https://xquik.com)) or X API access with prepaid credits ([console.x.com](https://console.x.com))
 - `min_likes` / `min_retweets` search operators unavailable (filtered post-hoc instead)
-- Full-archive search (beyond 7 days) is available on pay-per-use (same credits). See [X API search docs](https://docs.x.com/x-api/posts/search/introduction). This skill currently only uses recent search — full-archive support coming soon.
 
 ## Star History
 

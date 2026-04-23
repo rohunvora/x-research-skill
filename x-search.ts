@@ -24,6 +24,7 @@
  *   --quick                    Quick mode: 1 page, noise filter, 1hr cache
  *   --from <username>          Shorthand for from:username in query
  *   --quality                  Pre-filter low-engagement (min_faves:10)
+ *   --backend xquik|x-api      Force backend (default: auto-detect)
  *   --save                     Save results to ~/clawd/drafts/
  *   --json                     Output raw JSON
  *   --markdown                 Output as markdown (for research docs)
@@ -61,6 +62,13 @@ function getOpt(name: string): string | undefined {
     return val;
   }
   return undefined;
+}
+
+// --- Backend ---
+
+const backendOpt = getOpt("backend");
+if (backendOpt === "xquik" || backendOpt === "x-api") {
+  api.setBackend(backendOpt);
 }
 
 // --- Watchlist ---
@@ -202,11 +210,13 @@ async function cmdSearch() {
   }
 
   // Cost display (based on raw API reads, not post-filter count)
-  const cost = (rawTweetCount * 0.005).toFixed(2);
+  const unitCost = api.costPerTweet();
+  const cost = (rawTweetCount * unitCost).toFixed(unitCost < 0.001 ? 4 : 2);
+  const backend = api.backendLabel();
   if (quick) {
-    console.error(`\n⚡ quick mode · ${rawTweetCount} tweets read (~$${cost})`);
+    console.error(`\n⚡ quick mode · ${backend} · ${rawTweetCount} tweets read (~$${cost})`);
   } else {
-    console.error(`\n📊 ${rawTweetCount} tweets read · est. cost ~$${cost}`);
+    console.error(`\n📊 ${backend} · ${rawTweetCount} tweets read · est. cost ~$${cost}`);
   }
 
   // Stats to stderr
@@ -401,10 +411,16 @@ Search options:
                              filter, 1hr cache TTL, cost summary
   --from <username>          Shorthand for from:username in query
   --quality                  Pre-filter low-engagement tweets (min_faves:10)
+  --backend xquik|x-api      Force backend (default: auto-detect)
   --no-replies               Exclude replies
   --save                     Save to ~/clawd/drafts/
   --json                     Raw JSON output
-  --markdown                 Markdown output`);
+  --markdown                 Markdown output
+
+Backends:
+  XQUIK_API_KEY  → Xquik ($0.00015/tweet, 33x cheaper)
+  X_BEARER_TOKEN → X API v2 ($0.005/tweet)
+  Set one or both. Prefers Xquik when both are set.`);
 }
 
 // --- Main ---
